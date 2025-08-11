@@ -213,3 +213,38 @@
     (lambda (n acc) (* acc (+ n 1)))
     1
     (count-primes (prime-decomp n))))
+
+; The number of permutations that can be made by choosing k out of n items
+; https://en.wikipedia.org/wiki/Permutation
+(define (k-permutation n k)
+  (/ (factorial n)
+     (factorial (- n k))))
+
+; The number of combinations that can be made by choosing k out of n items
+; https://en.wikipedia.org/wiki/Combination
+(define (k-combination n k)
+  (/ (factorial n)
+     (* (factorial k) (factorial (- n k)))))
+
+ 
+; The number of combinations that can be made by choosing k out of n itemms,
+; where the chosen item can be repeated up to k times
+; https://en.wikipedia.org/wiki/Combination#Number_of_combinations_with_repetition
+(define (k-multicombination n k)
+  (k-combination (- (+ n k) 1)
+                 k))
+(define (test-on-eq f input correct-result)
+  (display "Test f(")
+  (display input)
+  (display ") = ")
+  (display correct-result)
+  (displayln "?")
+  (define result (f input))
+  (if (equal? correct-result result)
+      (display "  Passed, result: ")
+      (display "  Failed, result: "))
+  (displayln result))
+
+(define (sum-1-to-n n)
+  (/ (* n (+ n 1))
+     2))
