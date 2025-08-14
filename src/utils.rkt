@@ -163,10 +163,10 @@
       (if (= 0 rem)
           (values quot (cons prime acc) nth-prime)
           (values n acc (+ 1 nth-prime))))
-    (if (= 1 n)
+    (if (<= n 1)
         acc
         (go new-n new-acc new-nth-prime)))
-  (go n empty 0))
+  (reverse (go n empty 0)))
 
 (define (factorial n)
   (define (go acc n)
@@ -248,3 +248,32 @@
 (define (sum-1-to-n n)
   (/ (* n (+ n 1))
      2))
+
+(define (sum-of-digits n)
+  (if (< n 10)
+      n
+      (let-values ([(rest-digits first-digit) (quotient/remainder n 10)])
+        (+ first-digit (sum-of-digits rest-digits)))))
+
+; All numbers that divide n without remainder
+; Warning: Not as efficient as it could be, (combinations) creates duplicates which must be removed
+(define (divisors n)
+  (remove-duplicates (map (lambda (l) (foldl * 1 l)) (combinations (prime-decomp n)))))
+
+; All numbers less than n that divide n without remainder
+(define (proper-divisors n)
+  (define d (divisors n))
+  (take d (- (length d) 1)))
+
+; Takes O(n) time, n being the length of the input list
+(define (list-pop list idx)
+  (define (go list n acc-list value)
+    (if (null? list)
+        (values value (reverse acc-list))
+        (if (= 0 n)
+            ; Remove the current value, and save it in value to be returned later
+            ; Don't add the current value to the acc-list
+            (go (cdr list) (- n 1) acc-list (car list))
+            ; Iterate as normal. Add first to acc-list, keep value the same
+            (go (cdr list) (- n 1) (cons (car list) acc-list) value))))
+  (go list idx empty `error-idx-is-past-list-length))
