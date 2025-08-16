@@ -277,3 +277,14 @@
             ; Iterate as normal. Add first to acc-list, keep value the same
             (go (cdr list) (- n 1) (cons (car list) acc-list) value))))
   (go list idx empty `error-idx-is-past-list-length))
+
+; Creates a stream of the fibonacci numbers
+(define (fib-stream)
+  (define a 0)
+  (define b 1)
+  (define (fib)
+    (define next (+ a b))
+    (set! a b)
+    (set! b next)
+    (stream-cons next (fib)))
+  (stream-cons 1 (fib)))
