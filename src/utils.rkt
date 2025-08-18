@@ -288,3 +288,16 @@
     (set! b next)
     (stream-cons next (fib)))
   (stream-cons 1 (fib)))
+
+; Returns the index of the maximum number
+(define (stream-index-of-max stream)
+  (define result-list
+    (stream-fold
+      (lambda (acc n)
+              (match acc [(list current-idx maximum maximum-idx)
+                          (if (> n maximum)
+                              (list (+ 1 current-idx) n current-idx)
+                              (list (+ 1 current-idx) maximum maximum-idx))]))
+      (list 0 0 0)
+      stream))
+  (third result-list))
