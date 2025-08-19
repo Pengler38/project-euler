@@ -301,3 +301,21 @@
       (list 0 0 0)
       stream))
   (third result-list))
+
+; Creates a function, prime?, which has an internal cache of primes that gets updated when needed
+(define (create-prime?)
+  (define prime-stream (create-prime-stream))
+  (define max-prime 0)
+  (define map (make-hash))
+  (define (prime? n)
+    (if (< n max-prime)
+        ; Prime would be in the map if it's prime
+        (hash-ref map n #f)
+        ; Prime not in map, add more primes to map
+        (let ()
+          (set! max-prime (stream-first prime-stream))
+          (set! prime-stream (stream-rest prime-stream))
+          (hash-set! map max-prime #t)
+          ; Recurse / try again
+          (prime? n))))
+  prime?)
