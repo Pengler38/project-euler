@@ -155,7 +155,9 @@
 (define get-prime (create-get-prime))
 
 ; Decomposes n to a list of the prime components
-(define (prime-decomp n)
+; Output list starts with the largest number
+; Slightly faster than prime-decomp
+(define (reverse-prime-decomp n)
   (define (go n acc nth-prime)
     (define prime (get-prime nth-prime))
     (define-values (quot rem) (quotient/remainder n prime))
@@ -166,7 +168,12 @@
     (if (<= n 1)
         acc
         (go new-n new-acc new-nth-prime)))
-  (reverse (go n empty 0)))
+  (go n empty 0))
+
+; Decomposes n to a list of the prime components
+; Output list starts with the smallest number
+(define (prime-decomp n)
+  (reverse (reverse-prime-decomp n)))
 
 (define (factorial n)
   (define (go acc n)
@@ -319,3 +326,23 @@
           ; Recurse / try again
           (prime? n))))
   prime?)
+
+; Turns f from a function that takes multiple args to a function that takes a list of args
+(define (args->arglist f)
+  (lambda (l) (apply f l)))
+
+; Finds the greatest common divisor of a and b
+(define (gcd a b)
+  (define (go as bs)
+    (cond
+      [(or (null? as) (null? bs)) 1]
+      [(= (first as) (first bs)) (first as)]
+      ; Recurse and iterate through the left list or the right list
+      [(> (first as) (first bs)) (go (rest as) bs)]
+      [else (go as (rest bs))]))
+  (go (reverse (divisors a)) (reverse (divisors b))))
+
+; Finds the least common multiple of a and b
+(define (lcm a b)
+  (/ (* a b)
+     (gcd a b)))
