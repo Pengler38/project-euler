@@ -65,7 +65,7 @@
     (list-from-sieve)))
 
 
-(define (create-prime-stream)
+(define (create-prime-stream #:sieve-start-size [sieve-start-size 1024])
   ; Returns a vector prime-sieve
   (define (prime-sieve length)
     (define vec (make-vector length #t))
@@ -96,7 +96,7 @@
           [else ; v at i is not a prime, move to the next index
             (rest-of-stream)]))
 
-  (go 2 (prime-sieve 1024)))
+  (go 2 (prime-sieve sieve-start-size)))
 
 ; Takes the first n values of s, returning it as a list and the remaining stream
 ; Returns (values list stream)
@@ -263,7 +263,8 @@
         (+ first-digit (sum-of-digits rest-digits)))))
 
 ; All numbers that divide n without remainder
-; Warning: Not as efficient as it could be, (combinations) creates duplicates which must be removed
+; WARNING: divisors are unordered due to (combinations), EXCEPT the first will always be n and the last will always be 1
+; WARNING: Perhaps not as efficient as it could be, (combinations) creates duplicates which must be removed due to duplicate numbers in the prime decomposition
 (define (divisors n)
   (remove-duplicates (map (lambda (l) (foldl * 1 l)) (combinations (prime-decomp n)))))
 
@@ -340,9 +341,55 @@
       ; Recurse and iterate through the left list or the right list
       [(> (first as) (first bs)) (go (rest as) bs)]
       [else (go as (rest bs))]))
-  (go (reverse (divisors a)) (reverse (divisors b))))
+  (go (sort (divisors a) >) (sort (divisors b) >)))
 
 ; Finds the least common multiple of a and b
 (define (lcm a b)
   (/ (* a b)
      (gcd a b)))
+
+; Outputs a list of the digits, starting with the least significant digit
+(define (digits n)
+  (define-values (q r) (quotient/remainder n 10))
+  (if (= 0 q)
+      (list r)
+      (cons r (digits q))))
+
+; Outputs a number from a list of the digits, which starts with the least significant digit
+(define (undigits ds)
+  (if (null? ds)
+      0
+      (+ (first ds) (* 10 (undigits (rest ds))))))
+
+(define (num-digits n)
+  (if (= 0 n)
+      0
+      (+ 1 (num-digits (quotient n 10)))))
+
+; Returns which n-pandigital the nums are (contains all digits 1-n with no extra digits or zeroes)
+(define (n-pandigital . xs)
+  (define vec (make-vector 9 #f))
+  (define extra? #f)
+  (define zero? #f)
+  (define (check-digit n)
+    (cond [(= 0 n) (set! zero? #t)]
+          [(vector-ref vec (- n 1)) (set! extra? #t)]
+          [else (vector-set! vec (- n 1) #t)]))
+
+  (for-each (lambda (n) (for-each check-digit (digits n)))
+            xs)
+  (define vec-list (vector->list vec))
+  (define first-missing-digit
+    (let ([i (index-where vec-list not)])
+      ; If all the digits are covered, index-where returns #f and we replace #f with 9
+      (if (number? i) i 9)))
+  (define rest-missing? (= 0 (length (filter identity (drop vec-list first-missing-digit)))))
+
+  (if (or extra? zero? (not rest-missing?))
+      0
+      first-missing-digit))
+
+; Checks if the args combined together are pandigital (contain all digits 1-9 with no extras and no zeroes)
+(define (pandigital? . ns)
+  (= 9 (apply n-pandigital ns)))
+
