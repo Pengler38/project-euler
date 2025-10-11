@@ -393,3 +393,21 @@
 (define (pandigital? . ns)
   (= 9 (apply n-pandigital ns)))
 
+; A higher order function which takes f, and returns an is-f? function which checks if a number is an output of f
+; input to f starts with start, and each output of f must be increasing
+; This can be used for prime numbers, triangle numbers, etc.
+(define (create-is-f? f start)
+  (define hmap (make-hash))
+  (define i start)
+  (define max-value 0)
+  (define (is-f n)
+    (if (<= n max-value)
+        (hash-ref hmap n #f)
+        (let ([value (f i)])
+          (hash-set! hmap value #t)
+          (set! max-value value)
+          (set! i (+ i 1))
+          (is-f n))))
+  is-f)
+
+(define is-prime? (create-is-f? get-prime 0))
