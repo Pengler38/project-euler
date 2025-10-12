@@ -411,3 +411,20 @@
   is-f)
 
 (define is-prime? (create-is-f? get-prime 0))
+
+; Modular exponentiation
+; Returns n^p mod m
+(define (power-mod n p m)
+  (define (go res base p)
+    (cond [(= p 1) (modulo (* res base) m)]
+          ; p is even, can optimize by squaring the base and halving p
+          [(= 0 (modulo p 2))
+           (go res
+               (modulo (* base base) m)
+               (quotient p 2))]
+          ; p is odd, only do one power
+          [else
+            (go (modulo (* res base) m)
+                base
+                (- p 1))]))
+  (go 1 n p))
