@@ -428,3 +428,15 @@
                 base
                 (- p 1))]))
   (go 1 n p))
+
+; Memoizes a function f which takes exactly one argument (that argument must be hashable)
+(define (memoize1 f)
+  (define hmap (make-hash))
+  (define (memoized-f x)
+    (define hash-result (hash-ref hmap x #f))
+    (if (eq? #f hash-result)
+        (let ([result (f x)])
+          (hash-set! hmap x result)
+          result)
+        hash-result))
+  memoized-f)
