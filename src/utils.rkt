@@ -1,102 +1,46 @@
 #lang racket
 
-(require racket/treelist)
-(require racket/block)
-
 (provide (all-defined-out))
 
 
-; Checks if n is divisible by any num in ns
-(define (divisible? n ns)
-  (stream-ormap (lambda (x) (integer? (/ n x))) ns))
+; Adds to the prime-list by using a segmented sieve of Eratosthenes
+(define (segmented-primes-sieve prime-list start [segment-size 1048576])
+  (define sieve (make-vector segment-size #t))
+  (define (set-mul-false! n)
+    (stream-for-each (lambda (i) (vector-set! sieve (- i start) #f))
+                     (in-range (* n (ceiling (/ start n)))
+                               (+ start segment-size)
+                               n)))
+  (define (get-primes-from-sieve plist)
+    (stream-fold (lambda (acc n)
+                         (if (vector-ref sieve (- n start))
+                             (let () ; Prime found, add to list and remove multiples from the sieve
+                               (set-mul-false! n)
+                               (cons n acc))
+                             acc))
+                 plist
+                 (in-range start (+ start segment-size))))
 
-; Returns the first n primes in a treelist
-; A treelist can be treated as a stream/sequence
-(define (primes n)
-  (define (primes_ length ns i)
-    (if (= length n)
-        ns
-        (if (divisible? i ns)
-            (primes_ length ns (+ i 1))
-            (primes_ (+ length 1) (treelist-add ns i) (+ i 1))
-            )))
-  (primes_ 1 (treelist 2) 3))
+  (for-each set-mul-false! prime-list)
+  (cons (get-primes-from-sieve prime-list)
+        (+ start segment-size)))
 
-; Finds the primes by using the Sieve of Eratosthenes
-(define (primes-sieve n)
-  (letrec ([sieve (make-vector n #t)]
-           ; Finds the next #t in the sieve after i
-           [next-prime (lambda (i)
-                               (let ([i1 (add1 i)])
-                                 (if (or (= i1 n)
-                                         (vector-ref sieve i1))
-                                     i1
-                                     (next-prime i1))))]
-           ; Sets all multiples of idx to #f in the sieve
-           [set-mul-false! (lambda (idx)
-                                   (define (go idx mul)
-                                     (let ([target-idx (* idx mul)])
-                                       (if (>= target-idx n)
-                                           (void)
-                                           (block
-                                             (vector-set! sieve target-idx #f)
-                                             (go idx (add1 mul))))))
-                                   (go idx 2))]
-           ; Removes all non-prime numbers from the sieve
-           [do-primes-sieve! (lambda ()
-                                     (define (go i)
-                                       ; For every multiple of i, set that to #f in the sieve
-                                       (set-mul-false! i)
-                                       ; Recurse or return void
-                                       (if (>= i n)
-                                           (void)
-                                           (go (next-prime i))))
-                                     (go 2))]
-           [list-from-sieve (lambda ()
-                                    (define (go i ns)
-                                      (if (>= i n)
-                                          ns
-                                          (if (vector-ref sieve i)
-                                              (go (add1 i) (cons i ns))
-                                              (go (add1 i) ns))))
-                                    (go 2 empty))])
-    (do-primes-sieve!)
-    ; Make a list of primes from the vector
-    (list-from-sieve)))
+(define (create-prime-stream [segment-size 1048576])
+  (define (get-new old-list list acc)
+    (if (eq? list old-list)
+        acc
+        (get-new old-list (rest list) (cons (first list) acc))))
+  (define (go primes new-primes i)
+    (cond [(null? new-primes)
+           (define p (segmented-primes-sieve primes i segment-size))
+           (go (car p) (get-new primes (car p) null) (cdr p))]
+          [else (stream-cons (first new-primes) (go primes (rest new-primes) i))]))
+  (go null null 2))
 
-
-(define (create-prime-stream #:sieve-start-size [sieve-start-size 1024])
-  ; Returns a vector prime-sieve
-  (define (prime-sieve length)
-    (define vec (make-vector length #t))
-
-    (define (remove-prime-multiples! vec prime)
-      (define multiples (in-range (* 2 prime) length prime))
-      (stream-for-each (lambda (x) (vector-set! vec x #f))
-                       multiples))
-
-    ; If n is prime, remove multiples. If not, do nothing.
-    (define (sieve-n! n)
-      (if (vector-ref vec n)
-          (remove-prime-multiples! vec n)
-          null))
-
-    (stream-for-each sieve-n! (in-range 2 length))
-    vec)
-
-  (define (go i vec)
-    (define (rest-of-stream) (go (+ 1 i) vec))
-
-    (cond [(>= i (vector-length vec)) ; v is empty of primes. Re-eval with new primes.
-           (go i (prime-sieve (* 2 (vector-length vec))))]
-
-          [(vector-ref vec i) ; If prime, add to stream
-           (stream-cons i (rest-of-stream))]
-
-          [else ; v at i is not a prime, move to the next index
-            (rest-of-stream)]))
-
-  (go 2 (prime-sieve sieve-start-size)))
+(define (stream-takewhile s f)
+  (if (f (stream-first s))
+      (stream-cons (stream-first s) (stream-takewhile (stream-rest s) f))
+      empty-stream))
 
 ; Takes the first n values of s, returning it as a list and the remaining stream
 ; Returns (values list stream)
@@ -397,20 +341,26 @@
 ; input to f starts with start, and each output of f must be increasing
 ; This can be used for prime numbers, triangle numbers, etc.
 (define (create-is-f? f start)
-  (define hmap (make-hash))
+  (define hmap (mutable-set))
   (define i start)
   (define max-value 0)
   (define (is-f n)
     (if (<= n max-value)
-        (hash-ref hmap n #f)
+        (set-member? hmap n)
         (let ([value (f i)])
-          (hash-set! hmap value #t)
+          (set-add! hmap value)
           (set! max-value value)
           (set! i (+ i 1))
           (is-f n))))
   is-f)
 
-(define is-prime? (create-is-f? get-prime 0))
+(define is-prime?
+  (let ([pstream (create-prime-stream)])
+    (create-is-f? (lambda (_) ; This lambda is a hacky way to bypass the caching on get-prime so only create-is-f? caches results
+                          (define r (stream-first pstream))
+                          (set! pstream (stream-rest pstream))
+                          r)
+                  0)))
 
 ; Modular exponentiation
 ; Returns n^p mod m

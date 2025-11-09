@@ -16,7 +16,7 @@
     (if (> (stream-first s) pandigital-max)
         l
         (go (stream-rest s) (cons (stream-first s) l))))
-  (go (create-prime-stream #:sieve-start-size (+ pandigital-max 10000)) null)))
+  (go (create-prime-stream (+ pandigital-max 10000)) null)))
 
 (display "Answer: ")
 (stream-first (stream-filter (lambda (n) (> (n-pandigital n) 0))
